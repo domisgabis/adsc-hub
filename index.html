@@ -133,7 +133,7 @@ function vHeats(){
   return `<div class="card row sp wrap"><div><h3>${esc(hn(h))}</h3>
   <span class="tag ${own?'jury':''}">${own?'Głosujesz jako jury':'Rest of the World'}</span>${h.open?'':'<span class="tag">zamknięty</span>'}${S.voted.includes(h.id)?'<span class="tag" style="color:var(--ok)">zagłosowano</span>':''}
   <p class="mut" style="margin:6px 0 0">${ps.length} krajów</p></div>
-  <button class="pri" ${n<1||!h.open?'disabled':''} onclick="openVote(${h.id})">${S.voted.includes(h.id)?'Zmień głos':'Głosuj'}</button></div>`}).join('')}`}
+  <button class="pri" ${n<1||!h.open||S.voted.includes(h.id)?'disabled':''} onclick="openVote(${h.id})">${S.voted.includes(h.id)?'Zagłosowano':'Głosuj'}</button></div>`}).join('')}`}
 
 // ====== Głosowanie ======
 function openVote(h){S.heat=h;S.order=parts(h).filter(p=>p.country_id!==S.me).map(p=>p.id);S.view='vote';render()}
