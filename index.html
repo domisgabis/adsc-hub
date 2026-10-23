@@ -62,7 +62,7 @@ const SUPABASE_KEY = 'sb_publishable_wU-9nv4sTGtThO6fdgLd2Q_VtMyr0GD';
 // ==================================================================================
 const SC = [12,10,8,6,5,4,3,2,1,0];
 // Flagi: schemat nie ma kolumny z kodem kraju, więc dopasowujemy po nazwie. Brak dopasowania = 🎵
-const ISO = Object.fromEntries('Albania:AL;Armenia:AM;Australia:AU;Austria:AT;Azerbejdżan:AZ;Belgia:BE;Bułgaria:BG;Chorwacja:HR;Cypr:CY;Czechy:CZ;Dania:DK;Estonia:EE;Finlandia:FI;Francja:FR;Gruzja:GE;Niemcy:DE;Grecja:GR;Węgry:HU;Islandia:IS;Irlandia:IE;Izrael:IL;Włochy:IT;Łotwa:LV;Litwa:LT;Luksemburg:LU;Malta:MT;Mołdawia:MD;Czarnogóra:ME;Holandia:NL;Macedonia Północna:MK;Norwegia:NO;Polska:PL;Portugalia:PT;Rumunia:RO;San Marino:SM;Serbia:RS;Słowacja:SK;Słowenia:SI;Hiszpania:ES;Szwecja:SE;Szwajcaria:CH;Ukraina:UA;Wielka Brytania:GB'.split(';').map(x=>x.split(':')));
+const ISO = Object.fromEntries('Włochy:IT;Brazylia:BR;Armenia:AM;Macedonia Północna:MK;Australia:AU;Saint Lucia:LC;Czechy:CZ;Katar:QA;Austria:AT;Azerbejdżan:AZ;Jamajka:JM;Gruzja:GE;Rumunia:RO;Watykan:VA;Serbia:RS;Cypr:CY;Estonia:EE;Kanada:CA;Trynidad i Tobago:TT;Francja:FR;Chiny:CN;Eswatini:SZ;Uganda:UG;Malta:MT;Mołdawia:MD;Nowa Zelandia:NZ;Finlandia:FI;Korea Północna:KP;Szwajcaria:CH;Antigua i Barbuda:AG;Luksemburg:LU;Islandia:IS;Kuba:CU;Hiszpania:ES;Gabon:GA;Tonga:TO;Sri Lanka:LK;Norwegia:NO;Ekwador:EC;Wietnam:VN;Kongo:CD'.split(';').map(x=>x.split(':')));
 const H = {apikey:SUPABASE_KEY,'Content-Type':'application/json'};
 if (SUPABASE_KEY.startsWith('eyJ')) H.Authorization = 'Bearer ' + SUPABASE_KEY;
 const api = (p,o={}) => fetch(SUPABASE_URL+'/rest/v1/'+p,{headers:H,...o}).then(async r=>{
