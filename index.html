@@ -12,7 +12,7 @@
 *{box-sizing:border-box}
 body{margin:0;background:radial-gradient(900px 500px at 85% -10%,#4b1d8f55,transparent),radial-gradient(700px 400px at -10% 10%,#ff3d9a33,transparent),var(--bg);
 color:var(--tx);font:16px/1.5 var(--f2);min-height:100vh}
-#app{max-width:1000px;margin:0 auto;padding:24px 16px 80px}
+#app{max-width:1100px;margin:0 auto;padding:24px 16px 80px}
 h1,h2,h3{font-family:var(--f1);margin:0 0 8px;font-weight:700;letter-spacing:-.02em}
 h1{font-size:clamp(26px,6vw,40px)} h2{font-size:22px} h3{font-size:17px}
 .sub,.mut{color:var(--mut)}
@@ -28,6 +28,7 @@ input,select{font:inherit;color:var(--tx);background:var(--panel);border:1px sol
 .row{display:flex;align-items:center;gap:12px}.sp{justify-content:space-between}.wrap{flex-wrap:wrap}
 .tag{display:inline-block;font-size:12px;font-weight:800;border-radius:99px;padding:2px 10px;background:var(--panel2);color:var(--mut);margin-right:6px}
 .tag.jury{background:var(--gold);color:#241a00}
+.tag.q{background:var(--ok);color:#06241a}
 .me{display:flex;align-items:center;gap:10px;margin-bottom:18px}
 .me .f{font-size:30px}
 .rk{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin:8px 0}
@@ -56,7 +57,7 @@ tr:first-child td{font-weight:800}.big{font-family:var(--f1)}
 .sg i{opacity:.6}
 .pe{display:grid;grid-template-columns:140px 1fr 1fr auto auto;gap:8px;align-items:center;margin:8px 0}
 @media(max-width:760px){.pe{grid-template-columns:1fr 1fr}.pe b{grid-column:1/-1}}
-.gw{overflow-x:auto;border:1px solid var(--line);border-radius:14px}
+.gw{overflow-x:auto;border:1px solid var(--line);border-radius:14px;margin-bottom:12px}
 table.g{border-collapse:separate;border-spacing:0;width:max-content;min-width:100%;font-size:14px}
 .g th,.g td{padding:6px 7px;border-bottom:1px solid var(--line);text-align:center;white-space:nowrap}
 .g thead th{background:var(--panel2);color:var(--mut);font-weight:700;border-bottom:1px solid var(--line)}
@@ -78,6 +79,13 @@ table.g{border-collapse:separate;border-spacing:0;width:max-content;min-width:10
 .bw{height:4px;background:var(--panel2);border-radius:4px;margin:14px auto 18px;width:100%;max-width:1100px;overflow:hidden}
 .bar{height:100%;background:linear-gradient(90deg,var(--pink),var(--gold));transform-origin:left;animation:fill linear forwards}
 @keyframes fill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.switch-wrap{display:flex;align-items:center;gap:10px;margin:12px 0}
+.switch{position:relative;display:inline-block;width:44px;height:24px}
+.switch input{opacity:0;width:0;height:0}
+.slider{position:absolute;cursor:pointer;inset:0;background-color:var(--panel2);border:1px solid var(--line);transition:.3s;border-radius:24px}
+.slider:before{position:absolute;content:"";height:16px;width:16px;left:3px;bottom:3px;background-color:var(--mut);transition:.3s;border-radius:50%}
+input:checked + .slider{background-color:var(--pink);border-color:var(--pink)}
+input:checked + .slider:before{transform:translateX(20px);background-color:var(--tx)}
 </style>
 </head>
 <body>
@@ -87,7 +95,10 @@ table.g{border-collapse:separate;border-spacing:0;width:max-content;min-width:10
 const SUPABASE_URL = 'https://phimmupuvxtjoswmzxao.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_wU-9nv4sTGtThO6fdgLd2Q_VtMyr0GD';
 // ==================================================================================
-const SC = [12,10,8,6,5,4,3,2,1,0];
+const SC_HEAT = [12,10,8,6,5,4,3,2,1,0];
+const SC_FINAL = [12,10,8,7,6,5,4,3,2,1,0];
+const getSC = isFinal => isFinal ? SC_FINAL : SC_HEAT;
+
 const H = {apikey:SUPABASE_KEY,'Content-Type':'application/json'};
 if (SUPABASE_KEY.startsWith('eyJ')) H.Authorization = 'Bearer ' + SUPABASE_KEY;
 const api = (p,o={}) => fetch(SUPABASE_URL+'/rest/v1/'+p,{headers:H,...o}).then(async r=>{
@@ -98,7 +109,7 @@ const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const $ = s => document.querySelector(s);
 const ls = {get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
 const am = location.hash.match(/admin=([^&]+)/);
-const S = {countries:[],heats:[],parts:[],me:+ls.get('me')||null,view:'home',heat:null,order:[],voted:[],secret:am?decodeURIComponent(am[1]):null,votes:[],tab:null,pres:null};
+const S = {countries:[],heats:[],parts:[],me:+ls.get('me')||null,view:'home',heat:null,order:[],voted:[],secret:am?decodeURIComponent(am[1]):null,votes:[],tab:null,pres:null,showDetails:false};
 
 const cn = id => (S.countries.find(c=>c.id===id)||{name:'?'}).name;
 const hn = h => h.name || 'Heat '+h.id;
@@ -107,7 +118,6 @@ const parts = h => S.parts.filter(p=>p.heat_id===h).sort((a,b)=>(a.running_order
 const myHeats = () => S.parts.filter(p=>p.country_id===S.me).map(p=>p.heat_id);
 const isJury = h => myHeats().includes(h) || S.me===host();
 const part = id => S.parts.find(p=>p.id===id);
-// Wykonawca i tytuł: „Wykonawca — „Tytuł””; pusty tekst, gdy brak danych
 const info = p => [p.artist&&esc(p.artist), p.song&&'„'+esc(p.song)+'”'].filter(Boolean).join(' — ');
 const who = p => `<div class="t"><b>${esc(cn(p.country_id))}</b><span class="sg">${info(p)||'<i>brak danych o piosence</i>'}</span></div>`;
 function toast(m,err){const t=document.createElement('div');t.className='toast'+(err?' err':'');t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2800)}
@@ -122,7 +132,7 @@ async function load(){
 async function refresh(){try{await load();render()}catch(e){toast(e.message,1)}}
 
 // ====== Wybór kraju ======
-function vPick(){return `<h1>Eurovision Vote</h1><p class="sub">Wybierz kraj, który reprezentujesz.</p>
+function vPick(){return `<h1>ADSC - Głosowanie</h1><p class="sub">Wybierz kraj, który reprezentujesz.</p>
 <input id="q" placeholder="Szukaj kraju" oninput="filt(this.value)">
 <div class="grid">${S.countries.map(c=>`<button class="c" data-n="${esc(c.name.toLowerCase())}" onclick="pick(${c.id})">${esc(c.name)}</button>`).join('')}</div>`}
 function filt(v){v=v.toLowerCase();document.querySelectorAll('.grid .c').forEach(b=>b.style.display=b.dataset.n.includes(v)?'':'none')}
@@ -143,11 +153,11 @@ function vHeats(){
 function openVote(h){if(S.voted.includes(h))return;S.heat=h;S.order=parts(h).filter(p=>p.country_id!==S.me).map(p=>p.id);S.view='vote';render()}
 function mv(i,d){const o=S.order,j=i+d;if(j<0||j>=o.length)return;[o[i],o[j]]=[o[j],o[i]];render()}
 function vVote(){
-  const h=S.heats.find(x=>x.id===S.heat),own=isJury(S.heat);
+  const h=S.heats.find(x=>x.id===S.heat),own=isJury(S.heat),sc=getSC(h.is_final);
   return `<button onclick="S.view='home';render()">Wróć</button>
   <h1 style="margin-top:16px">${esc(hn(h))}</h1>
   <p class="sub">${own?'Głosujesz jako jury kraju '+esc(cn(S.me))+'.':(h.is_final?'Twój głos trafi do teległosowania.':'Twój głos trafi do puli Rest of the World.')} Ustaw kraje od najlepszego do najsłabszego strzałkami. Po zapisaniu głosu nie będzie można go zmienić.</p>
-  ${S.order.map((id,i)=>{const p=SC[i]||0;
+  ${S.order.map((id,i)=>{const p=sc[i]||0;
   return `<div class="rk"><div class="pt ${p==12?'p12':p==10?'p10':''}">${p||'–'}</div>${who(part(id))}
   <div class="ar row"><button aria-label="W górę" onclick="mv(${i},-1)">▲</button><button aria-label="W dół" onclick="mv(${i},1)">▼</button></div></div>`}).join('')}
   <button class="pri" style="width:100%;margin-top:14px" onclick="sendVote()">Zapisz głos</button>`}
@@ -157,10 +167,8 @@ async function sendVote(){
   catch(e){toast(e.message,1)}}
 
 // ====== Liczenie wyników ======
-// votes = (kraj głosujący, uczestnik heatu, punkty). Jury = kraje z heatu + gospodarz.
-// Heat: reszta głosujących = Rest of the World (suma -> ranking -> 12..1). Finał: reszta = teległosowanie (surowa suma punktów).
 function calc(hid){
-  const h=S.heats.find(x=>x.id===hid),fin=!!h.is_final;
+  const h=S.heats.find(x=>x.id===hid),fin=!!h.is_final,sc=getSC(fin);
   const ps=parts(hid),cids=ps.map(p=>p.country_id),pid=new Set(ps.map(p=>p.id)),by={},ho=host();
   S.votes.filter(v=>pid.has(v.participant)).forEach(v=>{const o=(by[v.voter]=by[v.voter]||{});if(v.points>0)o[v.participant]=v.points});
   const jc=[...cids];if(ho&&!jc.includes(ho))jc.push(ho);
@@ -171,13 +179,13 @@ function calc(hid){
   let ex;
   if(fin)ex={name:'Teległosowanie',tele:true,n:rest.length,raw,pts:null};
   else{const rk=ps.map(p=>p.id).sort((a,b)=>raw[b]-raw[a]||a-b);
-    ex={name:'Rest of the World',row:true,n:rest.length,raw,pts:rest.length?Object.fromEntries(rk.slice(0,10).map((id,i)=>[id,SC[i]]).filter(x=>x[1]>0)):null}}
+    ex={name:'Rest of the World',row:true,n:rest.length,raw,pts:rest.length?Object.fromEntries(rk.slice(0,sc.length-1).map((id,i)=>[id,sc[i]]).filter(x=>x[1]>0)):null}}
   const cols=[...juries,ex],jurors=[...juries.filter(j=>j.pts),...(ex.row&&ex.pts?[ex]:[])];
   const rows=ps.map(p=>{let jury=0;juries.forEach(j=>{jury+=(j.pts&&j.pts[p.id])||0});
     const e=fin?raw[p.id]:(ex.pts?ex.pts[p.id]||0:0);return{p,jury,row:e,total:jury+e}});
   rows.sort((a,b)=>b.total-a.total||b.jury-a.jury);
   const teleOrder=[...ps].sort((a,b)=>raw[a.id]-raw[b.id]||a.id-b.id);
-  return{fin,ps,cols,jurors,rows,raw,teleOrder,nJury:juries.filter(j=>j.pts).length,nExp:juries.length,nRow:rest.length}}
+  return{fin,ps,cols,jurors,rows,raw,teleOrder,nJury:juries.filter(j=>j.pts).length,nExp:juries.length,nRow:rest.length, byVoter: by, jc, cids, rest, juries}}
 
 // ====== Panel admina ======
 function cell(j,p){
@@ -187,23 +195,81 @@ function cell(j,p){
   const x=j.pts[p.id]||0;
   if(!x)return '<span class="cell z">·</span>';
   return `<span class="cell ${x==12?'p12':x==10?'p10':''}">${x}${j.row?`<small>${j.raw[p.id]}</small>`:''}</span>`}
+
 function vAdmin(){
   const h=S.heats.find(x=>x.id===S.tab);if(!h)return '<p class="mut">Brak heatów w bazie.</p>';
   const r=calc(h.id),used=new Set(S.parts.filter(p=>p.heat_id===h.id).map(p=>p.country_id)),nj=r.cols.length-1;
-  const pend=r.cols.filter(j=>j.cid&&!j.pts),xl=r.fin?'Tele':'ROTW';
+  const xl=r.fin?'Tele':'ROTW';
+
+  const votedVoters = new Set(Object.keys(r.byVoter).map(Number));
+  const missingJury = r.jc.filter(c => !votedVoters.has(c));
+  const missingTeleOrRow = S.countries.filter(c => !r.jc.includes(c.id) && !votedVoters.has(c.id));
+
   return `<h1>Panel admina</h1>
   <div class="tabs">${S.heats.map(x=>`<button class="${x.id===S.tab?'on':''}" onclick="S.tab=${x.id};render()">${esc(hn(x))}</button>`).join('')}</div>
   <div class="card"><div class="row sp wrap"><h2>Wyniki: ${esc(hn(h))} ${r.fin?'<span class="tag jury">Finał</span>':''}</h2>
   <div class="row"><button onclick="toggleOpen()">${h.open?'Zamknij głosowanie':'Otwórz głosowanie'}</button><button class="pri" ${r.jurors.length?'':'disabled'} onclick="startPres(${h.id})">Prezentacja</button></div></div>
   <p class="mut" style="margin-bottom:8px">Jurorzy, którzy zagłosowali: ${r.nJury} z ${r.nExp}. ${r.fin?'Teległosujących':'Głosujących w Rest of the World'}: ${r.nRow}.</p>
-  <div style="margin:0 0 14px">${pend.length?`<p class="mut" style="margin:0 0 6px">Jeszcze nie zagłosowali (${pend.length}):</p>${pend.map(j=>`<span class="tag">${esc(j.name)}${j.host?' (gospodarz)':''}</span>`).join('')}`:r.nExp?'<span class="tag" style="color:var(--ok)">Wszyscy jurorzy zagłosowali</span>':''}</div>
-  ${r.rows.length?`<div class="gw"><table class="g"><thead>
-  <tr><th class="l" rowspan="2">Kraj</th><th colspan="${nj}">Jurorzy przyznają punkty</th><th class="sep" rowspan="2">${r.fin?'Tele-<br>głosowanie':'Rest of<br>the World'}</th><th class="sep" colspan="3">Podsumowanie</th></tr>
-  <tr>${r.cols.slice(0,nj).map(j=>`<th class="v ${j.pts?'':'nv'}"><span>${esc(j.name)}${j.host?' (gospodarz)':''}</span></th>`).join('')}<th class="sep">Jury</th><th>${xl}</th><th>Razem</th></tr></thead><tbody>
-  ${r.rows.map((x,i)=>`<tr><td class="l"><span class="rn">${i+1}</span><b>${esc(cn(x.p.country_id))}</b><span class="sg" style="margin-left:22px">${info(x.p)||'<i>brak danych o piosence</i>'}</span></td>
-  ${r.cols.map(j=>`<td class="${j.row||j.tele?'sep':''}">${cell(j,x.p)}</td>`).join('')}
-  <td class="sep">${x.jury}</td><td>${x.row}</td><td class="tt">${x.total}</td></tr>`).join('')}</tbody></table></div>
-  <p class="mut" style="font-size:13px;margin-bottom:0">Wiersze są ułożone wg wyniku. × = własny kraj, – = brak głosu. ${r.fin?'Teległosowanie to suma punktów (12–1) od wszystkich głosujących spoza jury i jest dodawana do wyniku bez przeliczania.':'W kolumnie Rest of the World duża liczba to przyznane punkty, a mała pod spodem to suma punktów od wszystkich głosujących, z której powstał ranking.'}</p>`:'<p class="mut">Ten heat nie ma jeszcze krajów. Dodaj pierwszy poniżej.</p>'}</div>
+  
+  <div style="margin:0 0 14px">
+    ${missingJury.length ? `<p class="mut" style="margin:0 0 6px">Jeszcze nie zagłosowali (Jury / Kraje) (${missingJury.length}):</p>${missingJury.map(c=>`<span class="tag">${esc(cn(c))}${c===host()?' (gospodarz)':''}</span>`).join('')}` : ''}
+    ${r.fin ? (missingTeleOrRow.length ? `<p class="mut" style="margin:6px 0 6px">Jeszcze nie zagłosowali (Televoting / Inne kraje) (${missingTeleOrRow.length}):</p>${missingTeleOrRow.map(c=>`<span class="tag">${esc(cn(c))}</span>`).join('')}` : '') : ''}
+    ${!missingJury.length && (!r.fin || !missingTeleOrRow.length) ? '<span class="tag" style="color:var(--ok)">Wszyscy uprawnieni zagłosowali</span>' : ''}
+  </div>
+
+  <div class="switch-wrap">
+    <label class="switch"><input type="checkbox" ${S.showDetails?'checked':''} onchange="S.showDetails=this.checked;render()"><span class="slider"></span></label>
+    <span>Pokaż pełne szczegóły i miejsca krajów</span>
+  </div>
+
+  ${r.rows.length?`
+  <div class="gw"><table class="g"><thead>
+  <tr>
+    <th class="l" rowspan="2">Kraj</th>
+    ${S.showDetails ? `<th colspan="${nj}">Jurorzy przyznają punkty</th><th class="sep" rowspan="2">${r.fin?'Tele-<br>głosowanie':'Rest of<br>the World'}</th>` : ''}
+    <th class="sep" colspan="${S.showDetails?'3':'1'}">Podsumowanie</th>
+  </tr>
+  <tr>
+    ${S.showDetails ? r.cols.slice(0,nj).map(j=>`<th class="v ${j.pts?'':'nv'}"><span>${esc(j.name)}${j.host?' (gospodarz)':''}</span></th>`).join('') : ''}
+    ${S.showDetails ? `<th class="sep">Jury</th><th>${xl}</th>` : ''}
+    <th class="${S.showDetails?'':'sep'}">Razem</th>
+  </tr></thead><tbody>
+  ${r.rows.map((x,i)=>{
+    const rankBadge = S.showDetails ? `<span class="rn">${i+1}</span>` : (!r.fin ? (i < 10 ? '<span class="tag q">Q</span>' : '') : '');
+    return `<tr>
+    <td class="l">${rankBadge}<b>${esc(cn(x.p.country_id))}</b><span class="sg" style="margin-left:${S.showDetails?'22':'0'}px">${info(x.p)||'<i>brak danych o piosence</i>'}</span></td>
+    ${S.showDetails ? r.cols.map(j=>`<td class="${j.row||j.tele?'sep':''}">${cell(j,x.p)}</td>`).join('') : ''}
+    ${S.showDetails ? `<td class="sep">${x.jury}</td><td>${x.row}</td><td class="tt">${x.total}</td>` : `<td class="sep tt">${x.total}</td>`}
+    </tr>`;
+  }).join('')}</tbody></table></div>
+
+  ${!r.fin ? `
+  <div class="card" style="margin-top:20px">
+    <h3>Szczegółowe głosy Rest of the World (ROTW)</h3>
+    <p class="mut" style="font-size:13px;margin-bottom:10px">Rozpiska punktów przyznanych przez poszczególne kraje spoza jury (ROTW) na poszczególne kraje uczestniczące:</p>
+    <div class="gw"><table class="g"><thead>
+      <tr><th class="l">Kraj (ROTW) / Uczestnik</th>${r.ps.map(p=>`<th><span>${esc(cn(p.country_id))}</span></th>`).join('')}</tr>
+    </thead><tbody>
+      ${Object.entries(r.byVoter).filter(([v])=>!r.jc.includes(+v)).map(([voterId, pts])=>{
+        return `<tr><td class="l"><b>${esc(cn(+voterId))}</b></td>${r.ps.map(p=>`<td>${pts[p.id]?`<span class="cell">${pts[p.id]}</span>`:'<span class="cell z">·</span>'}</td>`).join('')}</tr>`;
+      }).join('')}
+    </tbody></table></div>
+  </div>
+  ` : `
+  <div class="card" style="margin-top:20px">
+    <h3>Szczegółowe głosy Teległosowania (Tele)</h3>
+    <p class="mut" style="font-size:13px;margin-bottom:10px">Rozpiska punktów przyznanych przez poszczególne kraje teległosujące na poszczególne kraje uczestniczące:</p>
+    <div class="gw"><table class="g"><thead>
+      <tr><th class="l">Kraj (Televoting) / Uczestnik</th>${r.ps.map(p=>`<th><span>${esc(cn(p.country_id))}</span></th>`).join('')}</tr>
+    </thead><tbody>
+      ${Object.entries(r.byVoter).filter(([v])=>!r.jc.includes(+v)).map(([voterId, pts])=>{
+        return `<tr><td class="l"><b>${esc(cn(+voterId))}</b></td>${r.ps.map(p=>`<td>${pts[p.id]?`<span class="cell">${pts[p.id]}</span>`:'<span class="cell z">·</span>'}</td>`).join('')}</tr>`;
+      }).join('')}
+    </tbody></table></div>
+  </div>
+  `}
+
+  <p class="mut" style="font-size:13px;margin-bottom:0">Wiersze są ułożone wg wyniku. × = własny kraj, – = brak głosu.</p>`:'<p class="mut">Ten heat nie ma jeszcze krajów. Dodaj pierwszy poniżej.</p>'}</div>
   <div class="card"><h3>Kraje w heacie (${r.ps.length})</h3>
   ${r.ps.map(p=>`<div class="pe"><b>${esc(cn(p.country_id))}</b><input id="ar${p.id}" placeholder="Wykonawca" value="${esc(p.artist||'')}"><input id="as${p.id}" placeholder="Tytuł piosenki" value="${esc(p.song||'')}"><button onclick="savePart(${p.id})">Zapisz</button><button class="x" onclick="delPart(${p.id})">Usuń</button></div>`).join('')}
   <div class="row wrap" style="margin-top:16px"><select id="ac" style="flex:1 1 160px">${S.countries.filter(c=>!used.has(c.id)).map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select>
@@ -211,6 +277,7 @@ function vAdmin(){
   <p class="mut" style="font-size:13px">Dodanie lub usunięcie kraju kasuje oddane głosy w tym heacie, bo stare rankingi przestają pasować. Edycja wykonawcy i tytułu głosów nie kasuje.</p></div>
   <div class="card"><h3>Gospodarz (jury w każdym heacie)</h3><p class="mut">Obecnie: ${host()?esc(cn(host())):'brak'}</p>
   <div class="row wrap"><select id="ah" style="flex:1 1 200px"><option value="0">Brak gospodarza</option>${S.countries.map(c=>`<option value="${c.id}" ${c.is_host?'selected':''}>${esc(c.name)}</option>`).join('')}</select><button class="pri" onclick="setHost()">Zapisz gospodarza</button></div></div>`}
+
 async function admin(fn,b,msg){try{await rpc(fn,{p_secret:S.secret,...b});if(msg)toast(msg);await refresh()}catch(e){toast(e.message,1)}}
 function addPart(){const c=$('#ac').value;if(!c)return toast('Wszystkie kraje są już w tym heacie',1);
   admin('admin_add_participant',{p_country:+c,p_heat:S.tab,p_artist:$('#na').value,p_song:$('#ns').value},'Dodano')}
@@ -220,7 +287,6 @@ function setHost(){admin('admin_set_host',{p_country:+$('#ah').value||null},'Zap
 function toggleOpen(){const h=S.heats.find(x=>x.id===S.tab);admin('admin_set_open',{p_heat:h.id,p_open:!h.open})}
 
 // ====== Prezentacja (automatyczna) ======
-// Na jurora: punkty 1–7 (8 s) + osobne slajdy 8 (5 s), 10 (5 s), 12 (7 s) = 25 s.
 const DUR = {low:8000, 8:5000, 10:5000, 12:7000, tintro:5000, tele:6000, intro:4000};
 function startPres(hid){
   const r=calc(hid),steps=[{k:'intro',d:DUR.intro}];
