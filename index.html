@@ -789,7 +789,7 @@
   
   <div style="margin:0 0 14px">
     ${missingJury.length ? `<p class="mut" style="margin:0 0 6px">Jeszcze nie zagłosowali (Jury / Kraje) (${missingJury.length}):</p>${missingJury.map(c => `<span class="tag">${esc(cn(c))}${c === host() ? ' (gospodarz)' : ''}</span>`).join('')}` : ''}
-    ${r.fin ? (missingTeleOrRow.length ? `<p class="mut" style="margin:6px 0 6px">Jeszcze nie zagłosowali (Televoting / Inne kraje) (${missingTeleOrRow.length}):</p>${missingTeleOrRow.map(c => `<span class="tag">${esc(cn(c))}</span>`).join('')}` : '') : ''}
+    ${r.fin ? (missingTeleOrRow.length ? `<p class="mut" style="margin:6px 0 6px">Jeszcze nie zagłosowali (Televoting / Inne kraje) (${missingTeleOrRow.length}):</p>${missingTeleOrRow.map(c => `<span class="tag">${esc(cn(c.id))}</span>`).join('')}` : '') : ''}
     ${!missingJury.length && (!r.fin || !missingTeleOrRow.length) ? '<span class="tag" style="color:var(--ok)">Wszyscy uprawnieni zagłosowali</span>' : ''}
   </div>
 
@@ -818,35 +818,31 @@
         return `<tr>
     <td class="l">${rankBadge}<b>${esc(cn(x.p.country_id))}</b><span class="sg" style="margin-left:${S.showDetails ? '22' : '0'}px">${info(x.p) || '<i>brak danych o piosence</i>'}</span></td>
     ${S.showDetails ? r.cols.map(j => `<td class="${j.row || j.tele ? 'sep' : ''}">${cell(j, x.p)}</td>`).join('') : ''}
-    ${S.showDetails ? `<td class="sep">${x.jury}</td><td>${x.row}</td><td class="tt">${x.total}</td>` : `<td class="sep tt">${x.total}</td>`}
+    ${S.showDetails ? `<td class="sep">${x.jury}</td><td>${x.row}</td><td class="tt">${x.total}</td>` : `<td class="sep tt">${!r.fin && isTop5 ? '—' : x.total}</td>`}
     </tr>`;
       }).join('')}</tbody></table></div>
 
-  ${!r.fin ? `
+  ${S.showDetails ? (!r.fin ? `
   <div class="card" style="margin-top:20px">
     <h3>Szczegółowe głosy Rest of the World (ROTW)</h3>
-    <p class="mut" style="font-size:13px;margin-bottom:10px">Rozpiska punktów przyznanych przez poszczególne kraje spoza jury (ROTW) na poszczególne kraje uczestniczące:</p>
+    <p class="mut" style="font-size:13px;margin-bottom:10px">Kolumny to głosujące kraje ROTW, a wiersze to piosenki uczestników. „–” oznacza brak głosu.</p>
     <div class="gw"><table class="g"><thead>
-      <tr><th class="l">Kraj (ROTW) / Uczestnik</th>${r.ps.map(p => `<th><span>${esc(cn(p.country_id))}</span></th>`).join('')}</tr>
+      <tr><th class="l">Piosenka / Uczestnik</th>${S.countries.filter(c => !r.jc.includes(c.id)).map(c => `<th><span>${esc(c.name)}</span></th>`).join('')}</tr>
     </thead><tbody>
-      ${Object.entries(r.byVoter).filter(([v]) => !r.jc.includes(+v)).map(([voterId, pts]) => {
-        return `<tr><td class="l"><b>${esc(cn(+voterId))}</b></td>${r.ps.map(p => `<td>${pts[p.id] ? `<span class="cell">${pts[p.id]}</span>` : '<span class="cell z">·</span>'}</td>`).join('')}</tr>`;
-      }).join('')}
+      ${r.ps.map(p => `<tr><td class="l"><b>${esc(cn(p.country_id))}</b><span class="sg">${info(p) || '<i>brak danych o piosence</i>'}</span></td>${S.countries.filter(c => !r.jc.includes(c.id)).map(c => { const pts = r.byVoter[c.id]; return `<td>${pts && pts[p.id] ? `<span class="cell">${pts[p.id]}</span>` : '<span class="cell z">–</span>'}</td>`; }).join('')}</tr>`).join('')}
     </tbody></table></div>
   </div>
   ` : `
   <div class="card" style="margin-top:20px">
     <h3>Szczegółowe głosy Teległosowania (Tele)</h3>
-    <p class="mut" style="font-size:13px;margin-bottom:10px">Rozpiska punktów przyznanych przez poszczególne kraje teległosujące na poszczególne kraje uczestniczące:</p>
+    <p class="mut" style="font-size:13px;margin-bottom:10px">Kolumny to kraje teległosujące, a wiersze to piosenki uczestników. Kraje, które nie zagłosowały, pozostają widoczne; „–” oznacza brak głosu.</p>
     <div class="gw"><table class="g"><thead>
-      <tr><th class="l">Kraj (Televoting) / Uczestnik</th>${r.ps.map(p => `<th><span>${esc(cn(p.country_id))}</span></th>`).join('')}</tr>
+      <tr><th class="l">Piosenka / Uczestnik</th>${S.countries.filter(c => !r.jc.includes(c.id)).map(c => `<th><span>${esc(c.name)}</span></th>`).join('')}</tr>
     </thead><tbody>
-      ${Object.entries(r.byVoter).filter(([v]) => !r.jc.includes(+v)).map(([voterId, pts]) => {
-        return `<tr><td class="l"><b>${esc(cn(+voterId))}</b></td>${r.ps.map(p => `<td>${pts[p.id] ? `<span class="cell">${pts[p.id]}</span>` : '<span class="cell z">·</span>'}</td>`).join('')}</tr>`;
-      }).join('')}
+      ${r.ps.map(p => `<tr><td class="l"><b>${esc(cn(p.country_id))}</b><span class="sg">${info(p) || '<i>brak danych o piosence</i>'}</span></td>${S.countries.filter(c => !r.jc.includes(c.id)).map(c => { const pts = r.byVoter[c.id]; return `<td>${pts && pts[p.id] ? `<span class="cell">${pts[p.id]}</span>` : '<span class="cell z">–</span>'}</td>`; }).join('')}</tr>`).join('')}
     </tbody></table></div>
   </div>
-  `}
+  `) : ''}
   ` : (r.fin ? `<p class="mut" style="text-align:center;padding:20px;">Wyniki finału są ukryte. Włącz switch powyżej, aby odkryć pełny ranking i szczegóły.</p>` : '')}
 
   <p class="mut" style="font-size:13px;margin-bottom:0">Wiersze są ułożone wg wyniku. × = własny kraj, – = brak głosu.</p>`: '<p class="mut">Ten heat nie ma jeszcze krajów. Dodaj pierwszy poniżej.</p>'
